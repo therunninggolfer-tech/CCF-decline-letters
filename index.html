@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CCF Decline Letter Generator</title>
+  <title>CCF Letter Generator</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -25,14 +25,18 @@
     .deal-row{transition:background .12s;cursor:pointer;}
     .deal-row:hover{background:#f0f7fa!important;}
     .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
-    .tag-reason{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:500;background:#fdecea;color:#c0392b;margin:2px 3px 2px 0;}
+    .tag-decline{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:500;background:#fdecea;color:#c0392b;margin:2px 3px 2px 0;}
+    .tag-defer{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:500;background:#e3f2fd;color:#1565c0;margin:2px 3px 2px 0;}
     .setup-card{background:white;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.10);padding:40px 44px;max-width:480px;width:100%;margin:60px auto;}
     .input-field{width:100%;border:1.5px solid #ddd;border-radius:7px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .15s;}
     .input-field:focus{border-color:#366775;}
-    .search-input{border:1.5px solid #ddd;border-radius:6px;padding:8px 14px;font-size:13px;width:220px;font-family:'DM Sans',sans-serif;outline:none;}
+    .search-input{border:1.5px solid #ddd;border-radius:6px;padding:8px 14px;font-size:13px;width:200px;font-family:'DM Sans',sans-serif;outline:none;}
     .search-input:focus{border-color:#366775;}
     .month-select{border:1.5px solid #ddd;border-radius:6px;padding:8px 14px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;background:white;cursor:pointer;}
     .month-select:focus{border-color:#366775;}
+    .tab-btn{border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 28px;border-radius:0;background:transparent;color:rgba(255,255,255,.6);border-bottom:3px solid transparent;transition:all .15s;}
+    .tab-btn.active{color:white;border-bottom:3px solid #987F40;}
+    .tab-btn:hover{color:white;}
     .letter-shell{max-width:700px;margin:0 auto;background:white;box-shadow:0 4px 28px rgba(0,0,0,.10);border-radius:4px;overflow:hidden;font-family:Calibri,sans-serif;}
     .field-row{display:flex;align-items:flex-end;gap:6px;margin-bottom:2px;}
     .field-value{border-bottom:1px solid #bbb;flex:1;min-height:22px;padding-bottom:2px;font-size:13px;}
@@ -60,19 +64,17 @@ const STATUS_MAP = {
 };
 
 function buildMonthOptions(){
-  const now=new Date(), opts=[];
+  const now=new Date(),opts=[];
   for(let i=0;i<6;i++){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    const y=d.getFullYear();
-    const m=String(d.getMonth()+1).padStart(2,"0");
-    const label=d.toLocaleDateString("en-ZA",{month:"long",year:"numeric"});
-    opts.push({value:`${y}-${m}`,label});
+    const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0");
+    opts.push({value:`${y}-${m}`,label:d.toLocaleDateString("en-ZA",{month:"long",year:"numeric"})});
   }
   return opts;
 }
 const MONTH_OPTS=buildMonthOptions();
 
-let S={phase:"setup",token:"",deals:[],selected:null,search:"",err:null,month:MONTH_OPTS[0].value};
+let S={phase:"setup",token:"",tab:"decline",declineDeals:[],deferDeals:[],selected:null,selectedType:null,search:"",err:null,month:MONTH_OPTS[0].value};
 const set=p=>{Object.assign(S,p);render();};
 
 function fmtDate(s){
@@ -83,15 +85,11 @@ function fmtDate(s){
   return isNaN(d)?c:d.toLocaleDateString("en-ZA",{day:"2-digit",month:"long",year:"numeric"});
 }
 function today(){return new Date().toLocaleDateString("en-ZA",{day:"2-digit",month:"long",year:"numeric"});}
-function sStyle(l){const v=(l||"").toLowerCase();if(v.includes("declined"))return"background:#fdecea;color:#c0392b";if(v.includes("approved"))return"background:#e8f5e9;color:#2e7d32";if(v.includes("pending"))return"background:#fff3e0;color:#e65100";if(v.includes("awaiting"))return"background:#e3f2fd;color:#1565c0";return"background:#f5f5f5;color:#555";}
+function sStyle(l){const v=(l||"").toLowerCase();if(v.includes("declined"))return"background:#fdecea;color:#c0392b";if(v.includes("approved"))return"background:#e8f5e9;color:#2e7d32";if(v.includes("pending"))return"background:#fff3e0;color:#e65100";if(v.includes("awaiting"))return"background:#e3f2fd;color:#1565c0";if(v.includes("defer"))return"background:#e3f2fd;color:#1565c0";return"background:#f5f5f5;color:#555";}
 function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
 async function gql(token,query){
-  const res=await fetch("https://api.monday.com/v2",{
-    method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":token,"API-Version":"2024-01"},
-    body:JSON.stringify({query})
-  });
+  const res=await fetch("https://api.monday.com/v2",{method:"POST",headers:{"Content-Type":"application/json","Authorization":token,"API-Version":"2024-01"},body:JSON.stringify({query})});
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.errors?.[0]?.message||"Monday API error "+res.status);}
   const data=await res.json();
   if(data.errors)throw new Error(data.errors[0]?.message||"Monday API error");
@@ -99,49 +97,41 @@ async function gql(token,query){
 }
 
 async function fetchGroupId(token,monthVal){
-  const [year,mon]=monthVal.split("-");
+  const[year,mon]=monthVal.split("-");
   const d=new Date(parseInt(year),parseInt(mon)-1,1);
-  const monthName=d.toLocaleDateString("en-ZA",{month:"long"});
-  const groupLabel=`${monthName} ${year}`;
+  const groupLabel=`${d.toLocaleDateString("en-ZA",{month:"long"})} ${year}`;
   const data=await gql(token,`{boards(ids:${BOARD_ID}){groups{id title}}}`);
   const groups=data?.data?.boards?.[0]?.groups||[];
   const match=groups.find(g=>g.title.toLowerCase()===groupLabel.toLowerCase());
-  return {groupId:match?.id||null,groupLabel};
+  return{groupId:match?.id||null,groupLabel};
 }
 
-// Correct API: query items via the group directly
 async function fetchGroupItems(token,groupId){
-  const query=`{
-    boards(ids:${BOARD_ID}){
-      groups(ids:["${groupId}"]){
-        items_page(limit:500){
-          items{
-            id name
-            column_values(ids:["dropdown1","text9","registration_no_","date_initiated","status27"]){
-              id text value
-            }
-          }
-        }
-      }
-    }
-  }`;
+  const query=`{boards(ids:${BOARD_ID}){groups(ids:["${groupId}"]){items_page(limit:500){items{id name column_values(ids:["dropdown1","dropdown4","text9","registration_no_","date_initiated","status27"]){id text value}}}}}}`;
   const data=await gql(token,query);
   return data?.data?.boards?.[0]?.groups?.[0]?.items_page?.items||[];
 }
 
 function parseItems(items){
-  return items.map(item=>{
+  const declined=[],deferred=[];
+  items.forEach(item=>{
     const cols={};
     (item.column_values||[]).forEach(c=>{cols[c.id]=c;});
     const declineRaw=cols["dropdown1"]?.text||"";
-    const reasons=declineRaw?declineRaw.split(",").map(s=>s.trim()).filter(Boolean):[];
+    const deferRaw=cols["dropdown4"]?.text||"";
     const dateRaw=(cols["date_initiated"]?.text||(cols["date_initiated"]?.value||"").replace(/"/g,"")).split("T")[0];
     const statusIdx=(()=>{try{return JSON.parse(cols["status27"]?.value||"{}").index??null;}catch(_){return null;}})();
     const statusLabel=statusIdx!==null?(STATUS_MAP[statusIdx]||"Status "+statusIdx):(cols["status27"]?.text||"—");
-    return{id:item.id,name:item.name||"",supplier:cols["text9"]?.text||"",regNo:cols["registration_no_"]?.text||"",dateInitiated:dateRaw||"",declineReasons:reasons,statusLabel};
-  })
-  .filter(d=>d.name&&d.declineReasons.length>0)
-  .sort((a,b)=>{if(!a.dateInitiated)return 1;if(!b.dateInitiated)return -1;return b.dateInitiated.localeCompare(a.dateInitiated);});
+    const base={id:item.id,name:item.name||"",supplier:cols["text9"]?.text||"",regNo:cols["registration_no_"]?.text||"",dateInitiated:dateRaw||"",statusLabel};
+    if(declineRaw.trim()){
+      declined.push({...base,reasons:declineRaw.split(",").map(s=>s.trim()).filter(Boolean)});
+    }
+    if(deferRaw.trim()){
+      deferred.push({...base,reasons:deferRaw.split(",").map(s=>s.trim()).filter(Boolean)});
+    }
+  });
+  const srt=arr=>arr.sort((a,b)=>{if(!a.dateInitiated)return 1;if(!b.dateInitiated)return -1;return b.dateInitiated.localeCompare(a.dateInitiated);});
+  return{declined:srt(declined),deferred:srt(deferred)};
 }
 
 async function load(){
@@ -150,19 +140,27 @@ async function load(){
   set({phase:"loading",err:null});
   try{
     const{groupId,groupLabel}=await fetchGroupId(token,S.month);
-    if(!groupId){set({deals:[],phase:"list",err:`No board group found for "${groupLabel}". Check the group exists on the Applications board.`});return;}
+    if(!groupId){set({declineDeals:[],deferDeals:[],phase:"list",err:`No board group found for "${groupLabel}".`});return;}
     const items=await fetchGroupItems(token,groupId);
-    const deals=parseItems(items);
-    if(!deals.length){set({deals:[],phase:"list",err:`No deals with decline reasons found in ${groupLabel}.`});}
-    else{set({deals,phase:"list",err:null});}
+    const{declined,deferred}=parseItems(items);
+    set({declineDeals:declined,deferDeals:deferred,phase:"list",err:null});
   }catch(e){set({phase:"list",err:"Could not load: "+e.message});}
 }
 
 function hdr(letter=false){
-  return `<div class="no-print" style="background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:16px 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);">
-    <img src="${LOGO_B64}" alt="CCF" style="height:32px;object-fit:contain;filter:brightness(10);"/>
-    <div style="flex:1;"><div style="color:white;font-size:16px;font-weight:600;">CCF Decline Letter Generator</div><div style="color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;">Triggered by Decline Reason · Applications 2026</div></div>
-    <div style="display:flex;gap:8px;">
+  const tabs=!letter?`
+    <div style="display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;">
+      <button class="tab-btn ${S.tab==="decline"?"active":""}" id="tab-decline">Declined</button>
+      <button class="tab-btn ${S.tab==="defer"?"active":""}" id="tab-defer">Deferred</button>
+    </div>`:"";
+  return `<div class="no-print" style="background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;">
+    <img src="${LOGO_B64}" alt="CCF" style="height:32px;object-fit:contain;filter:brightness(10);flex-shrink:0;"/>
+    <div style="flex:1;padding:16px 0;">
+      <div style="color:white;font-size:16px;font-weight:600;">CCF Letter Generator</div>
+      <div style="color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;">Decline &amp; Defer · Applications 2026</div>
+    </div>
+    ${tabs}
+    <div style="display:flex;gap:8px;margin-left:auto;">
       ${letter
         ? '<button class="btn btn-ghost" id="btn-back">← Back</button><button class="btn btn-gold" id="btn-print">🖨 Print / Save PDF</button>'
         : '<button class="btn btn-ghost" id="btn-refresh">↻ Refresh</button><button class="btn btn-ghost" id="btn-settings" style="font-size:15px;padding:6px 12px;" title="Settings">⚙</button>'}
@@ -170,19 +168,123 @@ function hdr(letter=false){
   </div>`;
 }
 
+function renderList(){
+  const isDecline=S.tab==="decline";
+  const deals=isDecline?S.declineDeals:S.deferDeals;
+  const tagClass=isDecline?"tag-decline":"tag-defer";
+  const monthLabel=MONTH_OPTS.find(o=>o.value===S.month)?.label||S.month;
+  const f=deals.filter(d=>d.name.toLowerCase().includes(S.search.toLowerCase())||d.supplier.toLowerCase().includes(S.search.toLowerCase()));
+  const monthOpts=MONTH_OPTS.map(o=>`<option value="${o.value}"${o.value===S.month?" selected":""}>${o.label}</option>`).join("");
+  const rows=f.map((d,i)=>`
+    <div class="deal-row col-row" data-id="${d.id}" style="border-bottom:${i<f.length-1?"1px solid #f2f2f2":"none"};">
+      <div>
+        <div style="font-weight:600;color:#1a1a1a;font-size:14px;">${esc(d.name)}</div>
+        ${d.regNo?'<div style="color:#bbb;font-size:11px;margin-top:2px;">'+esc(d.regNo)+'</div>':""}
+        ${d.dateInitiated?'<div style="color:#aaa;font-size:11px;margin-top:1px;">'+fmtDate(d.dateInitiated)+'</div>':""}
+      </div>
+      <div>${d.reasons.map(r=>'<span class="'+tagClass+'">'+esc(r)+'</span>').join("")}</div>
+      <div style="color:#555;font-size:13px;">${esc(d.supplier||"—")}</div>
+      <div><span class="badge" style="${sStyle(d.statusLabel)}">${esc(d.statusLabel)}</span></div>
+      <div style="text-align:right;"><button class="btn btn-teal btn-sm btn-open" data-id="${d.id}">Letter →</button></div>
+    </div>`).join("");
+
+  return `<div style="max-width:1020px;margin:28px auto;padding:0 20px;">
+    ${S.err?'<div class="err-box"><strong>⚠ '+esc(S.err)+'</strong></div>':""}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h2 style="margin:0;color:#366775;font-size:20px;font-weight:700;">${isDecline?"Ready to Decline":"Ready to Defer"}</h2>
+        <div style="color:#888;font-size:12px;margin-top:3px;">${deals.length} deal${deals.length!==1?"s":""} in ${monthLabel} with ${isDecline?"decline":"defer"} reason/s populated</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <select id="month-sel" class="month-select">${monthOpts}</select>
+        <input id="search-in" class="search-input" placeholder="Search client…" value="${esc(S.search)}"/>
+      </div>
+    </div>
+    ${f.length===0
+      ?'<div style="text-align:center;padding:56px;color:#bbb;font-size:14px;">No '+( isDecline?"declined":"deferred")+' deals found in '+esc(monthLabel)+'.</div>'
+      :'<div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.08);">'+
+        '<div class="col-hdr"><span>Client</span><span>'+( isDecline?"Decline":"Defer")+' Reasons</span><span>Supplier</span><span>Status</span><span></span></div>'+
+        rows+'</div>'}
+  </div>`;
+}
+
+function renderLetter(){
+  const d=S.selected, isDecline=S.selectedType==="decline";
+  const stampColor=isDecline?"#c0392b":"#1565c0";
+  const stampText=isDecline?"DECLINED":"DEFERRED";
+  const subText=isDecline?"The following application has been Declined":"The following application has been Deferred";
+  const sectionLabel=isDecline?"Reason/s for Decline:":"Additional Requirements:";
+  const footerWord=isDecline?"Declined":"Deferred";
+  const tagClass=isDecline?"tag-decline":"tag-defer";
+
+  const reasons=d.reasons.map((r,i)=>`
+    <div style="padding:5px 0;font-size:13px;color:#333;${i<d.reasons.length-1?"border-bottom:1px solid #f0f0f0;":""}display:flex;gap:10px;align-items:flex-start;">
+      <span style="color:${isDecline?"#366775":"#1565c0"};font-weight:700;line-height:1.6;">•</span><span>${esc(r)}</span>
+    </div>`).join("");
+
+  return `
+  <div class="no-print" style="max-width:700px;margin:16px auto 0;padding:0 20px;">
+    <div style="background:${isDecline?"#e8f7ef":"#e3f2fd"};border:1px solid ${isDecline?"#b2dfdb":"#90caf9"};border-radius:8px;padding:11px 16px;font-size:13px;color:${isDecline?"#2e7d6e":"#1565c0"};display:flex;gap:10px;align-items:center;">
+      <span style="font-size:16px;">✓</span>
+      <span>${stampText} letter ready for <strong>${esc(d.name)}</strong> — click <strong>Print / Save PDF</strong> above.</span>
+    </div>
+  </div>
+  <div style="padding:16px 20px 48px;">
+    <div class="letter-shell">
+      <div style="text-align:center;padding:32px 60px 0;">
+        <img src="${LOGO_B64}" alt="Custom Capital Finance" style="width:210px;object-fit:contain;display:block;margin:0 auto;"/>
+      </div>
+      <div style="padding:28px 60px 0;">
+        <div style="background:${stampColor};color:white;text-align:center;font-size:17px;font-weight:800;letter-spacing:7px;padding:8px 0;border-radius:2px;margin-bottom:8px;">${stampText}</div>
+        <div style="text-align:center;font-size:11.5px;color:#555;margin-bottom:28px;font-style:italic;">${subText}</div>
+        <div style="border-top:1px solid #ccc;padding-top:18px;">
+          <div class="field-row"><span style="font-size:13px;color:#333;font-weight:500;white-space:nowrap;min-width:100px;">Date</span><div class="field-value">${fmtDate(d.dateInitiated)||today()}</div></div>
+          <div style="height:10px;"></div>
+          <div class="field-row"><span style="font-size:13px;color:#333;font-weight:500;white-space:nowrap;min-width:100px;">Supplier</span><div class="field-value">${esc(d.supplier)}</div></div>
+          <div style="height:10px;"></div>
+          <div class="field-row"><span style="font-size:13px;color:#333;font-weight:500;white-space:nowrap;">Client name</span><div class="field-value">${esc(d.name)}</div></div>
+        </div>
+        <div style="margin-top:24px;">
+          <div style="font-size:13px;font-weight:600;color:#222;margin-bottom:10px;">${sectionLabel}</div>
+          ${isDecline
+            ? `<div style="border-bottom:1px solid #bbb;padding-bottom:4px;">${reasons}</div><div style="border-bottom:1px solid #bbb;padding-bottom:24px;margin-top:4px;"></div>`
+            : `<div style="border:1px solid #bbb;border-radius:2px;min-height:80px;padding:8px 10px;">${reasons}</div>`
+          }
+        </div>
+        <div style="margin-top:48px;">
+          <div style="background:#ddeef4;display:inline-block;padding:10px 32px;min-width:200px;margin-bottom:8px;border-radius:2px;">
+            <div style="font-weight:700;font-size:14px;color:#366775;letter-spacing:1px;">FM</div>
+          </div>
+          <div style="font-size:12px;color:#444;margin-top:8px;">Custom Capital Finance (Pty) Ltd &nbsp;Authorised Signatory</div>
+        </div>
+        <div style="margin-top:32px;border-top:1px solid #ddd;padding-top:12px;margin-bottom:40px;">
+          <div style="font-size:11px;color:#aaa;margin-bottom:10px;">For office use only:</div>
+          <div style="display:flex;gap:40px;"><div style="border-bottom:1px solid #aaa;width:300px;height:22px;"></div><div style="border-bottom:1px solid #aaa;width:120px;height:22px;"></div></div>
+          <div style="font-size:10px;color:#ccc;margin-top:8px;">${footerWord}</div>
+        </div>
+      </div>
+      <div style="border-top:2px solid #5FC2A2;background:white;padding:10px 60px 16px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:#333;letter-spacing:.5px;margin-bottom:3px;">Custom Capital Finance (Pty) Ltd: 2003/025527/07</div>
+        <div style="font-size:9px;color:#366775;margin-bottom:4px;">www.customcapital.co.za</div>
+        <div style="font-size:9px;color:#555;line-height:1.7;"><strong>Durban</strong> : 1<sup>st</sup> Floor Unit 3a, Glass House Main Building, 309 Umhlanga Rocks Drive, 4319 | Tel : +27 (0) 31 007 0777<br/><strong>Gauteng</strong> : Unit E4 004B Summit Place E, 221 Garsfontein Road, Menlyn, Pretoria, 0063 | Tel : +27 (0) 10 070 2654<br/><strong>Directors: Chris Du Toit | Pierre du Toit</strong></div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function render(){
-  const{phase,deals,selected,search,err,month}=S;
+  const{phase,selected}=S;
   let html="";
 
   if(phase==="setup"){
-    html=hdr()+`<div style="display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 68px);">
+    html=hdr()+`<div style="display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 64px);">
       <div class="setup-card">
         <div style="text-align:center;margin-bottom:28px;">
           <img src="${LOGO_B64}" style="height:50px;object-fit:contain;display:block;margin:0 auto 14px;"/>
           <div style="font-size:18px;font-weight:700;color:#366775;">Connect to Monday.com</div>
           <div style="font-size:13px;color:#888;margin-top:5px;">Enter your Monday API token once — saved to this browser</div>
         </div>
-        ${err?'<div class="err-box">'+esc(err)+'</div>':""}
+        ${S.err?'<div class="err-box">'+esc(S.err)+'</div>':""}
         <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Monday.com API Token</label>
         <input id="token-in" type="password" class="input-field" placeholder="eyJhbGciOiJ…" value="${esc(S.token)}" style="margin-bottom:6px;"/>
         <div style="font-size:11px;color:#aaa;margin-bottom:16px;">Monday → Profile picture → <strong>Developers</strong> → <strong>My Access Tokens</strong></div>
@@ -193,99 +295,14 @@ function render(){
       </div>
     </div>`;
   }
-
   else if(phase==="loading"){
-    html=hdr()+'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;gap:16px;"><div class="spin"></div><div style="color:#366775;font-weight:500;">Loading declined deals…</div></div>';
+    html=hdr()+'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;gap:16px;"><div class="spin"></div><div style="color:#366775;font-weight:500;">Loading deals…</div></div>';
   }
-
   else if(phase==="list"){
-    const monthLabel=MONTH_OPTS.find(o=>o.value===month)?.label||month;
-    const f=deals.filter(d=>d.name.toLowerCase().includes(search.toLowerCase())||d.supplier.toLowerCase().includes(search.toLowerCase()));
-    const monthOpts=MONTH_OPTS.map(o=>`<option value="${o.value}"${o.value===month?" selected":""}>${o.label}</option>`).join("");
-    const rows=f.map((d,i)=>`
-      <div class="deal-row col-row" data-id="${d.id}" style="border-bottom:${i<f.length-1?"1px solid #f2f2f2":"none"};">
-        <div>
-          <div style="font-weight:600;color:#1a1a1a;font-size:14px;">${esc(d.name)}</div>
-          ${d.regNo?'<div style="color:#bbb;font-size:11px;margin-top:2px;">'+esc(d.regNo)+'</div>':""}
-          ${d.dateInitiated?'<div style="color:#aaa;font-size:11px;margin-top:1px;">'+fmtDate(d.dateInitiated)+'</div>':""}
-        </div>
-        <div>${d.declineReasons.map(r=>'<span class="tag-reason">'+esc(r)+'</span>').join("")}</div>
-        <div style="color:#555;font-size:13px;">${esc(d.supplier||"—")}</div>
-        <div><span class="badge" style="${sStyle(d.statusLabel)}">${esc(d.statusLabel)}</span></div>
-        <div style="text-align:right;"><button class="btn btn-teal btn-sm btn-open" data-id="${d.id}">Letter →</button></div>
-      </div>`).join("");
-
-    html=hdr()+`<div style="max-width:1020px;margin:28px auto;padding:0 20px;">
-      ${err?'<div class="err-box"><strong>⚠ '+esc(err)+'</strong></div>':""}
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <div>
-          <h2 style="margin:0;color:#366775;font-size:20px;font-weight:700;">Ready to Decline</h2>
-          <div style="color:#888;font-size:12px;margin-top:3px;">${deals.length} deal${deals.length!==1?"s":""} in ${monthLabel} with decline reason/s populated</div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <select id="month-sel" class="month-select">${monthOpts}</select>
-          <input id="search-in" class="search-input" placeholder="Search client…" value="${esc(search)}"/>
-        </div>
-      </div>
-      ${f.length===0
-        ?'<div style="text-align:center;padding:56px;color:#bbb;font-size:14px;">No matching deals found in '+esc(monthLabel)+'.</div>'
-        :'<div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.08);">'+
-          '<div class="col-hdr"><span>Client</span><span>Decline Reasons</span><span>Supplier</span><span>Status</span><span></span></div>'+
-          rows+'</div>'}
-    </div>`;
+    html=hdr()+renderList();
   }
-
   else if(phase==="letter"&&selected){
-    const reasons=selected.declineReasons.map((r,i)=>`
-      <div style="padding:5px 0;font-size:13px;color:#333;${i<selected.declineReasons.length-1?"border-bottom:1px solid #f0f0f0;":""}display:flex;gap:10px;align-items:flex-start;">
-        <span style="color:#366775;font-weight:700;line-height:1.6;">•</span><span>${esc(r)}</span>
-      </div>`).join("");
-    html=hdr(true)+`
-    <div class="no-print" style="max-width:700px;margin:16px auto 0;padding:0 20px;">
-      <div style="background:#e8f7ef;border:1px solid #b2dfdb;border-radius:8px;padding:11px 16px;font-size:13px;color:#2e7d6e;display:flex;gap:10px;align-items:center;">
-        <span style="font-size:16px;">✓</span>
-        <span>Letter ready for <strong>${esc(selected.name)}</strong> — click <strong>Print / Save PDF</strong> above.</span>
-      </div>
-    </div>
-    <div style="padding:16px 20px 48px;">
-      <div class="letter-shell">
-        <div style="text-align:center;padding:32px 60px 0;">
-          <img src="${LOGO_B64}" alt="Custom Capital Finance" style="width:210px;object-fit:contain;display:block;margin:0 auto;"/>
-        </div>
-        <div style="padding:28px 60px 0;">
-          <div style="background:#c0392b;color:white;text-align:center;font-size:17px;font-weight:800;letter-spacing:7px;padding:8px 0;border-radius:2px;margin-bottom:8px;">DECLINED</div>
-          <div style="text-align:center;font-size:11.5px;color:#555;margin-bottom:28px;font-style:italic;">The following application has been Declined</div>
-          <div style="border-top:1px solid #ccc;padding-top:18px;">
-            <div class="field-row"><span style="font-size:13px;color:#333;font-weight:500;white-space:nowrap;min-width:100px;">Date</span><div class="field-value">${fmtDate(selected.dateInitiated)||today()}</div></div>
-            <div style="height:10px;"></div>
-            <div class="field-row"><span style="font-size:13px;color:#333;font-weight:500;white-space:nowrap;min-width:100px;">Supplier</span><div class="field-value">${esc(selected.supplier)}</div></div>
-            <div style="height:10px;"></div>
-            <div class="field-row"><span style="font-size:13px;color:#333;font-weight:500;white-space:nowrap;">Client name</span><div class="field-value">${esc(selected.name)}</div></div>
-          </div>
-          <div style="margin-top:24px;">
-            <div style="font-size:13px;font-weight:600;color:#222;margin-bottom:10px;">Reason/s for Decline:</div>
-            <div style="border-bottom:1px solid #bbb;padding-bottom:4px;">${reasons}</div>
-            <div style="border-bottom:1px solid #bbb;padding-bottom:24px;margin-top:4px;"></div>
-          </div>
-          <div style="margin-top:48px;">
-            <div style="background:#ddeef4;display:inline-block;padding:10px 32px;min-width:200px;margin-bottom:8px;border-radius:2px;">
-              <div style="font-weight:700;font-size:14px;color:#366775;letter-spacing:1px;">FM</div>
-            </div>
-            <div style="font-size:12px;color:#444;margin-top:8px;">Custom Capital Finance (Pty) Ltd &nbsp;Authorised Signatory</div>
-          </div>
-          <div style="margin-top:32px;border-top:1px solid #ddd;padding-top:12px;margin-bottom:40px;">
-            <div style="font-size:11px;color:#aaa;margin-bottom:10px;">For office use only:</div>
-            <div style="display:flex;gap:40px;"><div style="border-bottom:1px solid #aaa;width:300px;height:22px;"></div><div style="border-bottom:1px solid #aaa;width:120px;height:22px;"></div></div>
-            <div style="font-size:10px;color:#ccc;margin-top:8px;">Declined</div>
-          </div>
-        </div>
-        <div style="border-top:2px solid #5FC2A2;background:white;padding:10px 60px 16px;text-align:center;">
-          <div style="font-size:10px;font-weight:700;color:#333;letter-spacing:.5px;margin-bottom:3px;">Custom Capital Finance (Pty) Ltd: 2003/025527/07</div>
-          <div style="font-size:9px;color:#366775;margin-bottom:4px;">www.customcapital.co.za</div>
-          <div style="font-size:9px;color:#555;line-height:1.7;"><strong>Durban</strong> : 1<sup>st</sup> Floor Unit 3a, Glass House Main Building, 309 Umhlanga Rocks Drive, 4319 | Tel : +27 (0) 31 007 0777<br/><strong>Gauteng</strong> : Unit E4 004B Summit Place E, 221 Garsfontein Road, Menlyn, Pretoria, 0063 | Tel : +27 (0) 10 070 2654<br/><strong>Directors: Chris Du Toit | Pierre du Toit</strong></div>
-        </div>
-      </div>
-    </div>`;
+    html=hdr(true)+renderLetter();
   }
 
   document.getElementById("app").innerHTML=html;
@@ -301,12 +318,23 @@ function bind(){
   document.getElementById("token-in")?.addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("btn-connect")?.click();});
   document.getElementById("btn-refresh")?.addEventListener("click",load);
   document.getElementById("btn-settings")?.addEventListener("click",()=>set({phase:"setup",err:null}));
-  document.getElementById("btn-back")?.addEventListener("click",()=>set({phase:"list",selected:null}));
+  document.getElementById("btn-back")?.addEventListener("click",()=>set({phase:"list",selected:null,selectedType:null}));
   document.getElementById("btn-print")?.addEventListener("click",()=>window.print());
+  document.getElementById("tab-decline")?.addEventListener("click",()=>set({tab:"decline",search:""}));
+  document.getElementById("tab-defer")?.addEventListener("click",()=>set({tab:"defer",search:""}));
   document.getElementById("month-sel")?.addEventListener("change",e=>{S.month=e.target.value;load();});
   document.getElementById("search-in")?.addEventListener("input",e=>set({search:e.target.value}));
-  document.querySelectorAll(".btn-open").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();const d=S.deals.find(x=>x.id===b.dataset.id);if(d)set({phase:"letter",selected:d});}));
-  document.querySelectorAll(".deal-row").forEach(r=>r.addEventListener("click",()=>{const d=S.deals.find(x=>x.id===r.dataset.id);if(d)set({phase:"letter",selected:d});}));
+  document.querySelectorAll(".btn-open").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation();
+    const deals=S.tab==="decline"?S.declineDeals:S.deferDeals;
+    const d=deals.find(x=>x.id===b.dataset.id);
+    if(d)set({phase:"letter",selected:d,selectedType:S.tab});
+  }));
+  document.querySelectorAll(".deal-row").forEach(r=>r.addEventListener("click",()=>{
+    const deals=S.tab==="decline"?S.declineDeals:S.deferDeals;
+    const d=deals.find(x=>x.id===r.dataset.id);
+    if(d)set({phase:"letter",selected:d,selectedType:S.tab});
+  }));
 }
 
 S.token=localStorage.getItem(STORE_KEY)||"";
