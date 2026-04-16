@@ -213,7 +213,7 @@ function renderLetter(){
   const emailTo=S.emailTo||(d.supplierEmail||"");
   const hasEmail=emailTo.trim()!=="";
   const mailto=buildMailto(d,S.selectedType);
-  const sendBtn=hasEmail?"<a id='btn-email' href='"+mailto+"' style='text-decoration:none;'><button class='btn btn-blue' style='white-space:nowrap;'>Email via Outlook</button></a>":"<button class='btn' style='background:#ccc;color:#888;cursor:not-allowed;white-space:nowrap;' disabled>Email via Outlook</button>";
+  const sendBtn="<a id='btn-email' href='"+(hasEmail?mailto:"#")+"' style='text-decoration:none;'><button class='btn btn-blue' style='white-space:nowrap;"+(hasEmail?"":"opacity:.4;")+"'>Email via Outlook</button></a>";
   const noEmailWarn=!d.supplierEmail?"<div style='font-size:11px;color:#e65100;margin-top:6px;'>No email on Monday for this deal. Enter one above or add it to the Supplier Email column on the board.</div>":"";
   const emailBar="<div class='no-print' style='max-width:700px;margin:12px auto 0;background:white;border:1.5px solid #ddd;border-radius:8px;padding:16px 20px;'><div style='font-size:12px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;'>Send to Supplier</div><div style='display:flex;gap:10px;align-items:center;'><input id='email-to' type='email' class='email-input' placeholder='supplier@example.com' value='"+esc(emailTo)+"' style='flex:1;border:1.5px solid #ddd;border-radius:6px;padding:8px 14px;font-size:13px;font-family:inherit;outline:none;'/>"+sendBtn+"</div>"+noEmailWarn+"<div style='font-size:11px;color:#aaa;margin-top:8px;'>Opens Outlook with a pre-written email. Review and send from Outlook.</div></div>";
   const reasons=d.reasons.map(function(r,i){return "<div style='padding:5px 0;font-size:13px;color:#333;"+(i<d.reasons.length-1?"border-bottom:1px solid #f0f0f0;":"")+"display:flex;gap:10px;align-items:flex-start;'><span style='color:"+bulletColor+";font-weight:700;line-height:1.6;'>•</span><span>"+esc(r)+"</span></div>";}).join("");
@@ -255,7 +255,11 @@ function bind(){
   if(el)el.addEventListener("input",function(e){
     S.emailTo=e.target.value;
     const link=document.getElementById("btn-email");
-    if(link)link.href=buildMailto(S.selected,S.selectedType);
+    if(link){
+      link.href=buildMailto(S.selected,S.selectedType);
+      const btn=link.querySelector("button");
+      if(btn) btn.style.opacity=e.target.value.trim()?"1":"0.4";
+    }
   });
   document.querySelectorAll(".btn-open").forEach(function(b){
     b.addEventListener("click",function(e){
