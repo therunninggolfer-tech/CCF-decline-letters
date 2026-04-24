@@ -305,9 +305,16 @@ async function fetchGroupId(token,monthVal){
 }
 
 async function fetchGroupItems(token,groupId){
-  const q="{boards(ids:"+BOARD_ID+"){groups(ids:[\""+groupId+"\"]){items_page(limit:500){items{id name column_values(ids:[\"dropdown1\",\"dropdown4\",\"text9\",\"registration_no_\",\"date_initiated\",\"status27\",\"email_mm2fr2bd\"]){id text value}}}}}}";
-  const data=await gql(token,q);
-  return(data.data&&data.data.boards&&data.data.boards[0]&&data.data.boards[0].groups&&data.data.boards[0].groups[0]&&data.data.boards[0].groups[0].items_page&&data.data.boards[0].groups[0].items_page.items)||[];
+  let allItems=[],cursor=null;
+  do {
+    const cursorArg=cursor?", cursor: \""+cursor+"\"":"";
+    const q="{boards(ids:"+BOARD_ID+"){groups(ids:[\""+groupId+"\"]){items_page(limit:500"+cursorArg+"){cursor items{id name column_values(ids:[\"dropdown1\",\"dropdown4\",\"text9\",\"registration_no_\",\"date_initiated\",\"status27\",\"email_mm2fr2bd\"]){id text value}}}}}}";
+    const data=await gql(token,q);
+    const page=(data.data&&data.data.boards&&data.data.boards[0]&&data.data.boards[0].groups&&data.data.boards[0].groups[0]&&data.data.boards[0].groups[0].items_page)||{};
+    allItems=allItems.concat(page.items||[]);
+    cursor=page.cursor||null;
+  } while(cursor);
+  return allItems;
 }
 
 function parseItems(items){
