@@ -73,7 +73,7 @@ const STORE_KEY = "ccf_monday_token";
 const LOGO_SRC  = window.__LOGO__;
 const PROXY_URL = window.__PROXY__;
 
-const STATUS_MAP={0:"Awaiting Approval",1:"Approved",2:"Declined",3:"Pending",4:"Approved",6:"Approval Recourse",7:"Approval Recourse TP",8:"Approved FM",9:"Declined FM",10:"Arbitration Queue",11:"Pending FM",12:"Declined TP",13:"Pending TP",14:"Referral",15:"ADMIN",16:"Returned to BDO",17:"Pre-Approval",18:"Credit Prep Queue",19:"Referred FM",101:"Approved - Paid",102:"Approved TP",103:"Approved Recourse - Paid",104:"Awaiting Doc-u-sign approval",105:"High Risk Approval",106:"High Risk - Paid",107:"ACTIVE"};
+const STATUS_MAP={0:"Awaiting Approval",1:"Approved",2:"Declined",3:"Pending",4:"Approved",6:"Approval Recourse",7:"Approval Recourse TP",8:"Approved FM",9:"Declined FM",10:"Arbitration Queue",11:"Pending FM",12:"Declined TP",13:"Pending TP",14:"Referral",15:"ADMIN",16:"Returned to BDO",17:"Pre-Approval",18:"Credit Prep Queue",19:"Referred FM",101:"Approved - Paid",102:"Approved TP",103:"Approved Recourse - Paid",104:"Awaiting Doc-u-sign approval",105:"High Risk Approval",106:"High Risk - Paid",107:"ACTIVE",108:"Generate Letter"};
 
 const APPROVAL_CHECKS = [
   "Correct authorising resolution",
@@ -153,41 +153,53 @@ async function gql(token,query){
   return data;
 }
 
-async function fetchGroupId(token,monthVal){
+// Fetch all items for a given month by filtering on date_initiated, regardless of group.
+// This is robust to monday.com automations that move items between groups after status changes.
+async function fetchMonthItems(token,monthVal){
   const parts=monthVal.split("-");
-  const year=parts[0],mon=parts[1];
-  const d=new Date(parseInt(year),parseInt(mon)-1,1);
-  const groupLabel=d.toLocaleDateString("en-ZA",{month:"long"})+" "+year;
-  const data=await gql(token,"{boards(ids:"+BOARD_ID+"){groups{id title}}}");
-  const groups=(data.data&&data.data.boards&&data.data.boards[0]&&data.data.boards[0].groups)||[];
-  const match=groups.find(function(g){return g.title.toLowerCase()===groupLabel.toLowerCase();});
-  return{groupId:match?match.id:null,groupLabel:groupLabel};
-}
+  const year=parseInt(parts[0]),mon=parseInt(parts[1]);
+  // Compute first day of month and first day of next month (exclusive upper bound)
+  const startDate=year+"-"+String(mon).padStart(2,"0")+"-01";
+  const nextMon=mon===12?1:mon+1;
+  const nextYear=mon===12?year+1:year;
+  const endDate=nextYear+"-"+String(nextMon).padStart(2,"0")+"-01";
 
-async function fetchGroupItems(token,groupId){
-  // Pull all columns we need across decline / defer / approve
   const colIds=[
     "dropdown1","dropdown4","text9","registration_no_","date_initiated","status27",
     "email_mm2fr2bd","long_text_mm31n1e","numeric_mm31xh21","numeric_mm31wq5r",
     "numeric_mm317q97","long_text_mm31hyds","dropdown_mm315mbh","formula_mm31x3zf",
-    "numeric_mm31bz5v","numeric_mm312190","numeric_mm31d5he","recourse8"
+    "numeric_mm31bz5v","numeric_mm312190","numeric_mm31d5he","recourse8","payout"
   ];
   const colArg='[\"'+colIds.join('\",\"')+'\"]';
-  let allItems=[],cursor=null;
+
+  // Build a query_params filter on date_initiated using BETWEEN
+  // Monday GraphQL items_page query_params syntax for date BETWEEN: rules with compare_value as ["YYYY-MM-DD", "YYYY-MM-DD"]
+  const queryParams='{rules:[{column_id:\"date_initiated\",compare_value:[\"'+startDate+'\",\"'+endDate+'\"],operator:between}]}';
+
+  let allItems=[],cursor=null,pageCount=0;
   do {
     const cursorArg=cursor?", cursor: \""+cursor+"\"":"";
-    const q="{boards(ids:"+BOARD_ID+"){groups(ids:[\""+groupId+"\"]){items_page(limit:500"+cursorArg+"){cursor items{id name column_values(ids:"+colArg+"){id text value}}}}}}";
+    // First page uses query_params; subsequent pages use only cursor (Monday requirement)
+    const filterArg=cursor?"":(", query_params: "+queryParams);
+    const q="{boards(ids:"+BOARD_ID+"){items_page(limit:500"+filterArg+cursorArg+"){cursor items{id name column_values(ids:"+colArg+"){id text value}}}}}";
     const data=await gql(token,q);
-    const page=(data.data&&data.data.boards&&data.data.boards[0]&&data.data.boards[0].groups&&data.data.boards[0].groups[0]&&data.data.boards[0].groups[0].items_page)||{};
+    const page=(data.data&&data.data.boards&&data.data.boards[0]&&data.data.boards[0].items_page)||{};
     allItems=allItems.concat(page.items||[]);
     cursor=page.cursor||null;
+    pageCount++;
+    if(pageCount>20)break; // safety: 20 pages = 10,000 items max
   } while(cursor);
   return allItems;
 }
 
 function getNum(col){
   if(!col)return"";
-  if(col.text!==undefined&&col.text!==null&&col.text!=="")return col.text;
+  // Try text first, but strip currency symbols, spaces and thousand separators
+  if(col.text!==undefined&&col.text!==null&&col.text!==""&&col.text!=="null"){
+    const cleaned=String(col.text).replace(/[R\s,]/g,"").trim();
+    if(cleaned!==""&&!isNaN(Number(cleaned)))return Number(cleaned);
+    return col.text;
+  }
   try{const v=JSON.parse(col.value||"null");if(v===null||v===undefined)return"";return v;}catch(e){return"";}
 }
 function getText(col){if(!col)return"";return col.text||"";}
@@ -230,7 +242,8 @@ function parseItems(items){
       deferred.push(Object.assign({},base,{reasons:deferRaw.split(",").map(function(s){return s.trim();}).filter(Boolean)}));
     }
     // Approval tab: status index 1 (Approved) and 6 (Approval Recourse)
-    if(statusIdx===1||statusIdx===6){
+    // Approval tab: only deals where Application Specialist has set status to "Generate Letter" (108)
+    if(statusIdx===108){
       approved.push(Object.assign({},base,{
         settlement:getText(cols["long_text_mm31n1e"]),
         equipmentSchedule:getText(cols["long_text_mm31hyds"]),
@@ -238,7 +251,11 @@ function parseItems(items){
         period:getNum(cols["numeric_mm31wq5r"]),
         escalation:getNum(cols["numeric_mm317q97"]),
         rental:getNum(cols["numeric_mm31bz5v"]),
-        payout:getNum(cols["formula_mm31x3zf"]),
+        payout:(function(){
+          const newP=getNum(cols["formula_mm31x3zf"]);
+          if(newP!==""&&newP!==null&&!isNaN(Number(newP)))return newP;
+          return getNum(cols["payout"]);
+        })(),
         docFee:getNum(cols["numeric_mm312190"]),
         rentalInclIns:getNum(cols["numeric_mm31d5he"]),
         recourse:getNum(cols["recourse8"]),
@@ -255,9 +272,7 @@ async function load(){
   if(!token){set({phase:"setup"});return;}
   set({phase:"loading",err:null});
   try{
-    const res=await fetchGroupId(token,S.month);
-    if(!res.groupId){set({declineDeals:[],deferDeals:[],approveDeals:[],phase:"list",err:"No board group found for \""+res.groupLabel+"\"."});return;}
-    const items=await fetchGroupItems(token,res.groupId);
+    const items=await fetchMonthItems(token,S.month);
     const parsed=parseItems(items);
     set({declineDeals:parsed.declined,deferDeals:parsed.deferred,approveDeals:parsed.approved,phase:"list",err:null});
   }catch(e){set({phase:"list",err:"Could not load: "+e.message});}
@@ -348,17 +363,14 @@ function generatePDF(deal, type) {
   }
   y += 10;
 
+  // Signature - empty box, text below
   doc.setFillColor(221,238,244);
-  doc.rect(margin, y, 70, 10, "F");
+  doc.rect(margin, y, 90, 14, "F");
+  y += 18;
   doc.setFont("helvetica","bold");
-  doc.setTextColor(54,103,117);
-  doc.setFontSize(11);
-  doc.text("CCF", margin+5, y+7);
-  y += 14;
-  doc.setFont("helvetica","normal");
-  doc.setTextColor(80);
+  doc.setTextColor(34,34,34);
   doc.setFontSize(9);
-  doc.text("Custom Capital Finance (Pty) Ltd  Authorised Signatory", margin, y);
+  doc.text("Custom Capital Finance (Pty) Ltd Authorised Signatory", margin, y);
   y += 10;
 
   doc.setDrawColor(200);
@@ -583,13 +595,13 @@ function generateApprovalPDF(deal, edit) {
   doc.text("2. This approval may at any time be withdrawn or amended without notice, at our discretion", margin, y); y += 4;
   doc.text("3. Invoice value has to be calculated on the rental exclusive of insurance", margin, y); y += 8;
 
-  // Signature block
+  // Signature - empty box for wet signature, text below
   doc.setFillColor(221,238,244);
-  doc.rect(margin, y, 70, 9, "F");
-  y += 11;
-  doc.setFont("helvetica","normal");
+  doc.rect(margin, y, 85, 12, "F");
+  y += 16;
+  doc.setFont("helvetica","bold");
   doc.setFontSize(8.5);
-  doc.setTextColor(60);
+  doc.setTextColor(34,34,34);
   doc.text("Custom Capital Finance (Pty) Ltd Authorised Signatory", margin, y);
   y += 8;
 
@@ -858,7 +870,7 @@ function renderLetterDeclineDefer(){
     +"<div class='field-row'><span style='font-size:13px;color:#333;font-weight:500;white-space:nowrap;'>Client name</span><div class='field-value'>"+esc(d.name)+"</div></div>"
     +"</div>"
     +"<div style='margin-top:24px;'><div style='font-size:13px;font-weight:600;color:#222;margin-bottom:10px;'>"+sectionLabel+"</div>"+reasonsBlock+"</div>"
-    +"<div style='margin-top:48px;'><div style='background:#ddeef4;display:inline-block;padding:10px 32px;min-width:200px;margin-bottom:8px;border-radius:2px;'><div style='font-weight:700;font-size:14px;color:#366775;letter-spacing:1px;'>CCF</div></div><div style='font-size:12px;color:#444;margin-top:8px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory</div></div>"
+    +"<div style='margin-top:48px;'><div style='background:#ddeef4;display:inline-block;padding:0;height:55px;width:260px;border-radius:2px;'></div><div style='font-size:12px;color:#222;font-weight:600;margin-top:6px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory</div></div>"
     +"<div style='margin-top:32px;border-top:1px solid #ddd;padding-top:12px;margin-bottom:40px;'><div style='font-size:11px;color:#aaa;margin-bottom:10px;'>For office use only:</div><div style='display:flex;gap:40px;'><div style='border-bottom:1px solid #aaa;width:300px;height:22px;'></div><div style='border-bottom:1px solid #aaa;width:120px;height:22px;'></div></div><div style='font-size:10px;color:#ccc;margin-top:8px;'>"+footerWord+"</div></div>"
     +"</div>"
     +"<div style='border-top:2px solid #5FC2A2;background:white;padding:10px 60px 16px;text-align:center;'><div style='font-size:10px;font-weight:700;color:#333;letter-spacing:.5px;margin-bottom:3px;'>Custom Capital Finance (Pty) Ltd: 2003/025527/07</div><div style='font-size:9px;color:#366775;margin-bottom:4px;'>www.customcapital.co.za</div><div style='font-size:9px;color:#555;line-height:1.7;'><strong>Durban</strong> : 1st Floor Unit 3a, Glass House Main Building, 309 Umhlanga Rocks Drive, 4319 | Tel : +27 (0) 31 007 0777<br/><strong>Gauteng</strong> : Unit E4 004B Summit Place E, 221 Garsfontein Road, Menlyn, Pretoria, 0063 | Tel : +27 (0) 10 070 2654<br/><strong>Directors: Chris Du Toit | Pierre du Toit</strong></div></div>"
@@ -998,7 +1010,7 @@ function renderLetterApproval(){
     +"</div>"
 
     // Signature
-    +"<div style='margin-top:18px;'><div style='background:#ddeef4;display:inline-block;padding:10px 60px;min-width:200px;border-radius:2px;'></div><div style='font-size:11px;color:#444;margin-top:6px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory</div></div>"
+    +"<div style='margin-top:18px;'><div style='background:#ddeef4;display:inline-block;padding:0;height:48px;width:240px;border-radius:2px;'></div><div style='font-size:11px;color:#222;font-weight:600;margin-top:6px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory</div></div>"
 
     // Office use
     +"<div style='margin-top:24px;border-top:1px solid #ddd;padding-top:10px;margin-bottom:30px;'><div style='font-size:11px;color:#aaa;margin-bottom:8px;'>For office use only:</div><div style='display:flex;gap:30px;'><div style='border-bottom:1px solid #aaa;width:300px;height:20px;'></div><div style='border-bottom:1px solid #aaa;width:120px;height:20px;'></div></div><div style='font-size:9px;color:#ccc;margin-top:6px;'>APPROVAL</div></div>"
@@ -1185,3 +1197,4 @@ if(S.token){load();}else{render();}
 </script>
 </body>
 </html>
+
