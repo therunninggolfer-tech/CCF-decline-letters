@@ -172,7 +172,7 @@ async function fetchGroupItems(token,groupId){
     "numeric_mm317q97","long_text_mm31hyds","dropdown_mm315mbh","formula_mm31x3zf",
     "numeric_mm31bz5v","numeric_mm312190","numeric_mm31d5he","recourse8"
   ];
-  const colArg='[\\\"'+colIds.join('\\\",\\\"')+'\\\"]';
+  const colArg='[\"'+colIds.join('\",\"')+'\"]';
   let allItems=[],cursor=null;
   do {
     const cursorArg=cursor?", cursor: \""+cursor+"\"":"";
@@ -1185,4 +1185,3 @@ if(S.token){load();}else{render();}
 </script>
 </body>
 </html>
-
