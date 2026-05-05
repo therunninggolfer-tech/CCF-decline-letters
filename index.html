@@ -15,6 +15,14 @@ body{font-family:'DM Sans',sans-serif;background:#eef2f5;min-height:100vh;}
   body{background:white!important;}
   .no-print{display:none!important;}
   .letter-shell{box-shadow:none!important;border-radius:0!important;margin:0!important;max-width:100%!important;}
+  /* Hide placeholders in printed output - they should never appear in the PDF */
+  input::placeholder, textarea::placeholder{color:transparent!important;opacity:0!important;}
+  input::-webkit-input-placeholder, textarea::-webkit-input-placeholder{color:transparent!important;opacity:0!important;}
+  input::-moz-placeholder, textarea::-moz-placeholder{color:transparent!important;opacity:0!important;}
+  /* Strip form-control styling so inputs/textareas blend into the printed letter */
+  input, textarea, select{border:none!important;background:transparent!important;box-shadow:none!important;outline:none!important;-webkit-appearance:none!important;appearance:none!important;}
+  /* Empty inputs/textareas should not reserve space */
+  textarea:placeholder-shown{min-height:0!important;height:auto!important;}
 }
 .spin{width:36px;height:36px;border:3px solid #6FB9D5;border-top-color:#366775;border-radius:50%;animation:rot .8s linear infinite;}
 @keyframes rot{to{transform:rotate(360deg);}}
@@ -1181,5 +1189,3 @@ if(S.token){load();}else{render();}
 </script>
 </body>
 </html>
-
-
