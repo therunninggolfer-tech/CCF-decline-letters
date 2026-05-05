@@ -447,7 +447,7 @@ function generateApprovalPDF(deal, edit) {
   doc.setFontSize(15);
   doc.setFont("helvetica","bold");
   doc.text("CONGRATULATIONS!", W/2, y+6.5, {align:"center"});
-  y += 11;
+  y += 14;
 
   doc.setFontSize(8.5);
   doc.setTextColor(100);
@@ -626,15 +626,6 @@ function generateApprovalPDF(deal, edit) {
   doc.text("Custom Capital Finance (Pty) Ltd Authorised Signatory", margin, y);
   y += 8;
 
-  doc.text("For office use only:", margin, y); y += 4;
-  doc.setDrawColor(180);
-  doc.line(margin, y, W-margin-30, y);
-  doc.line(W-margin-25, y, W-margin, y);
-  y += 4;
-  doc.setFontSize(7.5);
-  doc.setTextColor(120);
-  doc.text("APPROVAL", margin, y);
-
   // Footer (mint divider only - CCF details already in header)
   const footerY = 277;
   doc.setDrawColor(95,194,162);
@@ -755,7 +746,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v2.9</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.0</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -957,8 +948,8 @@ function renderLetterApproval(){
     +"</div>"
     // CONGRATULATIONS banner
     +"<div style='padding:12px 90px 4px;'>"
-    +"<div style='background:#6FB9D5;color:white;text-align:center;font-size:16px;font-weight:800;letter-spacing:3px;padding:6px 0;border-radius:2px;'>CONGRATULATIONS!</div>"
-    +"<div style='text-align:center;font-size:10.5px;color:#666;margin-top:3px;font-style:italic;'>The following application has been approved!</div>"
+    +"<div style='background:#6FB9D5;color:white;text-align:center;font-size:16px;font-weight:800;letter-spacing:3px;padding:6px 0;border-radius:2px;margin-bottom:8px;'>CONGRATULATIONS!</div>"
+    +"<div style='text-align:center;font-size:10.5px;color:#666;margin-top:8px;font-style:italic;'>The following application has been approved!</div>"
     +"</div>"
 
     // Form area
