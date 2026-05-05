@@ -398,23 +398,12 @@ function generatePDF(deal, type) {
   y += 6;
   doc.text(isDecline?"Declined":"Deferred", margin, y);
 
+  // Footer (mint divider only - CCF details already in header)
   const footerY = 277;
   doc.setDrawColor(95,194,162);
   doc.setLineWidth(0.8);
   doc.line(margin, footerY, W-margin, footerY);
   doc.setLineWidth(0.2);
-  doc.setFontSize(7.5);
-  doc.setTextColor(50);
-  doc.setFont("helvetica","bold");
-  doc.text("Custom Capital Finance (Pty) Ltd: 2003/025527/07", W/2, footerY+4, {align:"center"});
-  doc.setFont("helvetica","normal");
-  doc.setTextColor(54,103,117);
-  doc.text("www.customcapital.co.za", W/2, footerY+8, {align:"center"});
-  doc.setTextColor(80);
-  doc.text("Durban: 1st Floor Unit 3a, Glass House Main Building, 309 Umhlanga Rocks Drive, 4319 | Tel: +27 (0) 31 007 0777", W/2, footerY+12, {align:"center"});
-  doc.text("Gauteng: Unit E4 004B Summit Place E, 221 Garsfontein Road, Menlyn, Pretoria, 0063 | Tel: +27 (0) 10 070 2654", W/2, footerY+16, {align:"center"});
-  doc.setFont("helvetica","bold");
-  doc.text("Directors: Chris Du Toit | Pierre du Toit", W/2, footerY+20, {align:"center"});
 
   return doc.output("datauristring").split(",")[1];
 }
@@ -746,7 +735,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.0</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.1</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -885,7 +874,7 @@ function renderLetterDeclineDefer(){
     +"<div style='margin-top:48px;'><div style='background:#ddeef4;display:inline-block;padding:8px 28px;border-radius:2px;'><div style='font-family:\"Dancing Script\",cursive;font-size:30px;color:#366775;font-weight:700;line-height:1;'>Custom Capital Finance</div></div><div style='font-size:12px;color:#222;font-weight:600;margin-top:6px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory</div></div>"
     +"<div style='margin-top:32px;border-top:1px solid #ddd;padding-top:12px;margin-bottom:40px;'><div style='font-size:11px;color:#aaa;margin-bottom:10px;'>For office use only:</div><div style='display:flex;gap:40px;'><div style='border-bottom:1px solid #aaa;width:300px;height:22px;'></div><div style='border-bottom:1px solid #aaa;width:120px;height:22px;'></div></div><div style='font-size:10px;color:#ccc;margin-top:8px;'>"+footerWord+"</div></div>"
     +"</div>"
-    +"<div style='border-top:2px solid #5FC2A2;background:white;padding:10px 60px 16px;text-align:center;'><div style='font-size:10px;font-weight:700;color:#333;letter-spacing:.5px;margin-bottom:3px;'>Custom Capital Finance (Pty) Ltd: 2003/025527/07</div><div style='font-size:9px;color:#366775;margin-bottom:4px;'>www.customcapital.co.za</div><div style='font-size:9px;color:#555;line-height:1.7;'><strong>Durban</strong> : 1st Floor Unit 3a, Glass House Main Building, 309 Umhlanga Rocks Drive, 4319 | Tel : +27 (0) 31 007 0777<br/><strong>Gauteng</strong> : Unit E4 004B Summit Place E, 221 Garsfontein Road, Menlyn, Pretoria, 0063 | Tel : +27 (0) 10 070 2654<br/><strong>Directors: Chris Du Toit | Pierre du Toit</strong></div></div>"
+    +"<div style='border-top:2px solid #5FC2A2;padding:8px 60px;'></div>"
     +"</div></div>";
 
   return hdr(true)+emailBar+letter;
