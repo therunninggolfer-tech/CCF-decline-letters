@@ -483,17 +483,24 @@ function generateApprovalPDF(deal, edit) {
   doc.text("Equipment schedule:", margin, y);
   y += 4;
 
-  // Equipment schedule box
-  const eqLines = (edit.equipmentSchedule || "").split("\n").filter(function(l){return l.trim();});
+  // Equipment schedule box - wrap long lines so they don't escape the box
+  doc.setFontSize(10);
+  doc.setTextColor(40);
+  const rawEqLines = (edit.equipmentSchedule || "").split("\n").filter(function(l){return l.trim();});
+  const innerW = cw - 8; // 4mm padding each side
+  // Pre-wrap every raw line to inner width and flatten
+  const eqLines = [];
+  rawEqLines.forEach(function(line){
+    const wrapped = doc.splitTextToSize(line.trim(), innerW);
+    wrapped.forEach(function(w){ eqLines.push(w); });
+  });
   const eqBoxH = Math.max(28, eqLines.length * 4.5 + 8);
   doc.setDrawColor(180);
   doc.setLineWidth(0.3);
   doc.rect(margin, y, cw, eqBoxH);
-  doc.setFontSize(10);
-  doc.setTextColor(40);
   let eqY = y + 6;
   eqLines.forEach(function(line) {
-    doc.text(line.trim(), W/2, eqY, {align:"center"});
+    doc.text(line, W/2, eqY, {align:"center", maxWidth: innerW});
     eqY += 4.5;
   });
   y += eqBoxH + 6;
@@ -735,7 +742,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.1</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.2</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
