@@ -464,7 +464,8 @@ function generateApprovalPDF(deal, edit) {
     doc.setFont("helvetica","normal");
     doc.text(label, x, y);
     doc.setFont("helvetica","normal");
-    doc.text(value || "", fieldStart, y);
+    const sv=(value===null||value===undefined||value==="")?"":String(value);
+    doc.text(sv, fieldStart, y);
     doc.setDrawColor(120);
     doc.setLineWidth(0.2);
     doc.line(fieldStart, y+1, fieldEnd, y+1);
@@ -512,26 +513,30 @@ function generateApprovalPDF(deal, edit) {
   doc.setFontSize(10);
   function fin3(l1,v1,l2,v2,l3,v3) {
     doc.setFont("helvetica","normal");
+    // Coerce all values to strings - jsPDF rejects raw numbers
+    const s1=(v1===null||v1===undefined||v1==="")?"":String(v1);
+    const s2=(v2===null||v2===undefined||v2==="")?"":String(v2);
+    const s3=(v3===null||v3===undefined||v3==="")?"":String(v3);
     // Left
     doc.text(l1, margin, y);
     const lw1 = doc.getTextWidth(l1) + 2;
-    doc.text(v1 || "", margin+lw1, y);
+    doc.text(s1, margin+lw1, y);
     doc.setDrawColor(120); doc.line(margin+lw1, y+1, margin+62, y+1);
     // Middle
     doc.text(l2, margin+72, y);
     const lw2 = doc.getTextWidth(l2) + 2;
-    doc.text(v2 || "", margin+72+lw2, y);
+    doc.text(s2, margin+72+lw2, y);
     doc.line(margin+72+lw2, y+1, margin+128, y+1);
     // Right
     doc.text(l3, margin+138, y);
     const lw3 = doc.getTextWidth(l3) + 2;
-    doc.text(v3 || "", margin+138+lw3, y);
+    doc.text(s3, margin+138+lw3, y);
     doc.line(margin+138+lw3, y+1, W-margin, y+1);
     y += 7;
   }
 
   fin3("Payout excl. Vat", fmtR(edit.payout), "Settlement", edit.settlement || "", "Escalation", fmtPct(edit.escalation));
-  fin3("Rental excl. Vat", fmtR(edit.rental), "Factor", edit.factor || "", "Period", edit.period ? edit.period+" MONTHS" : "");
+  fin3("Rental excl. Vat", fmtR(edit.rental), "Factor", edit.factor, "Period", edit.period ? edit.period+" MONTHS" : "");
 
   // Rental Incl Insurance Excl Vat - in red, full width left, Doc fee right
   doc.setFont("helvetica","bold");
@@ -750,7 +755,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v2.8</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v2.9</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
