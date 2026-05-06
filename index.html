@@ -137,6 +137,8 @@ function today(){return new Date().toLocaleDateString("en-ZA",{day:"2-digit",mon
 function todayShort(){const d=new Date();return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+d.getFullYear();}
 function fmtR(n){if(n===""||n===null||n===undefined||isNaN(n))return"";const v=Number(n);return"R "+v.toLocaleString("en-ZA",{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtPct(n){if(n===""||n===null||n===undefined||isNaN(n))return"";return Number(n)+" %";}
+// Prepend "R " to a text-column rand value if it has content and doesn't already start with R
+function prefixR(s){const v=(s===null||s===undefined)?"":String(s).trim();if(!v)return"";if(/^r\s/i.test(v))return v;return"R "+v;}
 function sStyle(l){
   const v=(l||"").toLowerCase();
   if(v.includes("declined"))return"background:#fdecea;color:#c0392b";
@@ -529,7 +531,7 @@ function generateApprovalPDF(deal, edit) {
   }
 
   fin3("Payout excl. Vat", fmtR(edit.payout), "Settlement", edit.settlement || "", "Escalation", edit.escalation || "");
-  fin3("Rental excl. Vat", edit.rental || "", "Factor", edit.factor || "", "Period", edit.period || "");
+  fin3("Rental excl. Vat", prefixR(edit.rental), "Factor", edit.factor || "", "Period", edit.period || "");
 
   // Rental Incl Insurance Excl Vat - in red, full width left, Doc fee right
   doc.setFont("helvetica","bold");
@@ -538,7 +540,7 @@ function generateApprovalPDF(deal, edit) {
   doc.setFont("helvetica","normal");
   doc.setTextColor(40);
   const rinsLw = doc.getTextWidth("Rental Incl Insurance Excl Vat") + 2;
-  doc.text(edit.rentalInclIns || "", margin+rinsLw, y);
+  doc.text(prefixR(edit.rentalInclIns), margin+rinsLw, y);
   doc.setDrawColor(120);
   doc.line(margin+rinsLw, y+1, margin+128, y+1);
   doc.text("Doc fee", margin+138, y);
@@ -739,7 +741,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.4</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.5</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -981,14 +983,14 @@ function renderLetterApproval(){
 
     // Financial row 2: Rental | Factor | Period
     +"<div style='display:flex;gap:14px;margin-bottom:8px;'>"
-    +"<div style='flex:1;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;white-space:nowrap;'>Rental excl. Vat</span><input class='app-input' id='ap-rental' value='"+esc(e.rental||"")+"' style='flex:1;'/></div>"
+    +"<div style='flex:1;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;white-space:nowrap;'>Rental excl. Vat</span><input class='app-input' id='ap-rental' value='"+esc(prefixR(e.rental))+"' style='flex:1;'/></div>"
     +"<div style='flex:1;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Factor</span><input class='app-input' id='ap-factor' value='"+esc(e.factor)+"' style='flex:1;'/></div>"
     +"<div style='flex:0.7;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Period</span><input class='app-input' id='ap-period' value='"+esc(e.period?e.period+" MONTHS":"")+"' style='flex:1;'/></div>"
     +"</div>"
 
     // Rental Incl Insurance (red label) | Doc fee
     +"<div style='display:flex;gap:14px;margin-bottom:14px;'>"
-    +"<div style='flex:2;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#c0392b;font-weight:700;white-space:nowrap;'>Rental Incl Insurance Excl Vat</span><input class='app-input' id='ap-rentalincl' value='"+esc(e.rentalInclIns||"")+"' style='flex:1;'/></div>"
+    +"<div style='flex:2;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#c0392b;font-weight:700;white-space:nowrap;'>Rental Incl Insurance Excl Vat</span><input class='app-input' id='ap-rentalincl' value='"+esc(prefixR(e.rentalInclIns))+"' style='flex:1;'/></div>"
     +"<div style='flex:0.8;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Doc fee</span><input class='app-input' id='ap-docfee' value='"+esc(fmtR(e.docFee))+"' style='flex:1;'/></div>"
     +"</div>"
 
