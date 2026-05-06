@@ -174,9 +174,10 @@ async function fetchMonthItems(token,monthVal){
 
   const colIds=[
     "dropdown1","dropdown4","text9","registration_no_","date_initiated","status27",
-    "email_mm2fr2bd","long_text_mm31n1e","numeric_mm31xh21","numeric_mm31wq5r",
-    "numeric_mm317q97","long_text_mm31hyds","dropdown_mm315mbh","formula_mm31x3zf",
-    "numeric_mm31bz5v","numeric_mm312190","numeric_mm31d5he","recourse8","payout"
+    "email_mm2fr2bd","long_text_mm31n1e","long_text_mm31hyds","dropdown_mm315mbh",
+    "long_text_mm323dd9","long_text_mm3258wv","long_text_mm3263ks",
+    "text_mm32mv5t","text_mm32kxq8",
+    "numeric_mm312190","recourse8","payout"
   ];
   const colArg='[\"'+colIds.join('\",\"')+'\"]';
 
@@ -257,13 +258,13 @@ function parseItems(items){
       approved.push(Object.assign({},base,{
         settlement:getText(cols["long_text_mm31n1e"]),
         equipmentSchedule:getText(cols["long_text_mm31hyds"]),
-        factor:getNum(cols["numeric_mm31xh21"]),
-        period:getNum(cols["numeric_mm31wq5r"]),
-        escalation:getNum(cols["numeric_mm317q97"]),
-        rental:getNum(cols["numeric_mm31bz5v"]),
+        factor:getText(cols["text_mm32mv5t"]),
+        period:getText(cols["long_text_mm3258wv"]),
+        escalation:getText(cols["long_text_mm3263ks"]),
+        rental:getText(cols["long_text_mm323dd9"]),
         payout:getNum(cols["payout"]),
         docFee:getNum(cols["numeric_mm312190"]),
-        rentalInclIns:getNum(cols["numeric_mm31d5he"]),
+        rentalInclIns:getText(cols["text_mm32kxq8"]),
         recourse:getNum(cols["recourse8"]),
         approvalConditions:getText(cols["dropdown_mm315mbh"])
       }));
@@ -527,8 +528,8 @@ function generateApprovalPDF(deal, edit) {
     y += 7;
   }
 
-  fin3("Payout excl. Vat", fmtR(edit.payout), "Settlement", edit.settlement || "", "Escalation", fmtPct(edit.escalation));
-  fin3("Rental excl. Vat", fmtR(edit.rental), "Factor", edit.factor, "Period", edit.period ? edit.period+" MONTHS" : "");
+  fin3("Payout excl. Vat", fmtR(edit.payout), "Settlement", edit.settlement || "", "Escalation", edit.escalation || "");
+  fin3("Rental excl. Vat", edit.rental || "", "Factor", edit.factor || "", "Period", edit.period || "");
 
   // Rental Incl Insurance Excl Vat - in red, full width left, Doc fee right
   doc.setFont("helvetica","bold");
@@ -537,7 +538,7 @@ function generateApprovalPDF(deal, edit) {
   doc.setFont("helvetica","normal");
   doc.setTextColor(40);
   const rinsLw = doc.getTextWidth("Rental Incl Insurance Excl Vat") + 2;
-  doc.text(fmtR(edit.rentalInclIns), margin+rinsLw, y);
+  doc.text(edit.rentalInclIns || "", margin+rinsLw, y);
   doc.setDrawColor(120);
   doc.line(margin+rinsLw, y+1, margin+128, y+1);
   doc.text("Doc fee", margin+138, y);
@@ -738,7 +739,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.3</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.4</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -975,19 +976,19 @@ function renderLetterApproval(){
     +"<div style='display:flex;gap:14px;margin-bottom:8px;'>"
     +"<div style='flex:1;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;white-space:nowrap;'>Payout excl. Vat</span><input class='app-input' id='ap-payout' value='"+esc(fmtR(e.payout))+"' style='flex:1;'/></div>"
     +"<div style='flex:1;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Settlement</span><input class='app-input' id='ap-settlement' value='"+esc(e.settlement)+"' style='flex:1;'/></div>"
-    +"<div style='flex:0.7;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Escalation</span><input class='app-input' id='ap-escalation' value='"+esc(fmtPct(e.escalation))+"' style='flex:1;'/></div>"
+    +"<div style='flex:0.7;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Escalation</span><input class='app-input' id='ap-escalation' value='"+esc(e.escalation||"")+"' style='flex:1;'/></div>"
     +"</div>"
 
     // Financial row 2: Rental | Factor | Period
     +"<div style='display:flex;gap:14px;margin-bottom:8px;'>"
-    +"<div style='flex:1;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;white-space:nowrap;'>Rental excl. Vat</span><input class='app-input' id='ap-rental' value='"+esc(fmtR(e.rental))+"' style='flex:1;'/></div>"
+    +"<div style='flex:1;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;white-space:nowrap;'>Rental excl. Vat</span><input class='app-input' id='ap-rental' value='"+esc(e.rental||"")+"' style='flex:1;'/></div>"
     +"<div style='flex:1;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Factor</span><input class='app-input' id='ap-factor' value='"+esc(e.factor)+"' style='flex:1;'/></div>"
     +"<div style='flex:0.7;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Period</span><input class='app-input' id='ap-period' value='"+esc(e.period?e.period+" MONTHS":"")+"' style='flex:1;'/></div>"
     +"</div>"
 
     // Rental Incl Insurance (red label) | Doc fee
     +"<div style='display:flex;gap:14px;margin-bottom:14px;'>"
-    +"<div style='flex:2;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#c0392b;font-weight:700;white-space:nowrap;'>Rental Incl Insurance Excl Vat</span><input class='app-input' id='ap-rentalincl' value='"+esc(fmtR(e.rentalInclIns))+"' style='flex:1;'/></div>"
+    +"<div style='flex:2;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#c0392b;font-weight:700;white-space:nowrap;'>Rental Incl Insurance Excl Vat</span><input class='app-input' id='ap-rentalincl' value='"+esc(e.rentalInclIns||"")+"' style='flex:1;'/></div>"
     +"<div style='flex:0.8;display:flex;align-items:flex-end;gap:6px;'><span style='font-size:13px;color:#222;'>Doc fee</span><input class='app-input' id='ap-docfee' value='"+esc(fmtR(e.docFee))+"' style='flex:1;'/></div>"
     +"</div>"
 
