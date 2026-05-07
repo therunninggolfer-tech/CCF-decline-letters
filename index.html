@@ -78,6 +78,8 @@ window.__PROXY__ = "https://proud-pond-b238ccf-mail-proxy.francois-2cd.workers.d
 <script>
 const BOARD_ID  = "18393867301";
 const STORE_KEY = "ccf_monday_token";
+// Cache of monday user IDs to display names, populated after items load
+const USER_NAMES = {};
 const LOGO_SRC  = window.__LOGO__;
 const PROXY_URL = window.__PROXY__;
 
@@ -206,6 +208,33 @@ async function fetchMonthItems(token,monthVal){
     pageCount++;
     if(pageCount>20)break; // safety: 20 pages = 10,000 items max
   } while(cursor);
+
+  // Resolve approved_by user IDs to display names via a single users() query
+  // (monday's GraphQL items_page can return person column text as empty or just an ID; this is the robust workaround)
+  const userIds=new Set();
+  allItems.forEach(function(item){
+    const cv=Array.isArray(item.column_values)?item.column_values:[];
+    cv.forEach(function(c){
+      if(c.id==="approved_by"&&c.value){
+        try{
+          const v=JSON.parse(c.value);
+          if(v&&v.personsAndTeams&&v.personsAndTeams.length){
+            v.personsAndTeams.forEach(function(p){if(p.id)userIds.add(p.id);});
+          }
+        }catch(e){}
+      }
+    });
+  });
+  if(userIds.size>0){
+    try{
+      const idList=Array.from(userIds).join(",");
+      const uq="{users(ids:["+idList+"]){id name}}";
+      const udata=await gql(token,uq);
+      const users=(udata.data&&udata.data.users)||[];
+      users.forEach(function(u){if(u&&u.id)USER_NAMES[String(u.id)]=u.name||"";});
+    }catch(e){/* swallow - signature will just be empty */}
+  }
+
   return allItems;
 }
 
@@ -220,6 +249,25 @@ function getNum(col){
   try{const v=JSON.parse(col.value||"null");if(v===null||v===undefined)return"";return v;}catch(e){return"";}
 }
 function getText(col){if(!col)return"";return col.text||"";}
+// Specifically for person/people columns: returns display name. Tries text first,
+// then resolves via USER_NAMES cache (populated by users() query), then value JSON.
+function getPersonName(col){
+  if(!col)return"";
+  // Try text first if it looks like a name (not just a numeric ID)
+  if(col.text&&col.text.trim()&&!/^\d+$/.test(col.text.trim()))return col.text.trim();
+  // Resolve via USER_NAMES cache using IDs from value JSON
+  try{
+    const v=col.value?JSON.parse(col.value):null;
+    if(v&&v.personsAndTeams&&v.personsAndTeams.length>0){
+      for(let i=0;i<v.personsAndTeams.length;i++){
+        const p=v.personsAndTeams[i];
+        if(p.id&&USER_NAMES[String(p.id)])return USER_NAMES[String(p.id)];
+        if(p.name)return String(p.name).trim();
+      }
+    }
+  }catch(e){}
+  return "";
+}
 
 function parseItems(items){
   const declined=[],deferred=[],approved=[];
@@ -263,7 +311,7 @@ function parseItems(items){
     // or where Application Specialist set status to "Generate Letter" (108).
     // These are all active queues where the proposed approval letter may need to be generated/edited.
     if(statusIdx===0||statusIdx===11||statusIdx===13||statusIdx===108){
-      const approver=getText(cols["approved_by"]);
+      const approver=getPersonName(cols["approved_by"]);
       approved.push(Object.assign({},base,{
         settlement:getText(cols["long_text_mm31n1e"]),
         equipmentSchedule:getText(cols["long_text_mm31hyds"]),
@@ -760,7 +808,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.9</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.11</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -1040,7 +1088,9 @@ function renderLetterApproval(){
     +(e.approverInitials?"<span style=\"font-family:'Dancing Script',cursive;font-size:26px;color:#222;font-weight:700;\">"+esc(e.approverInitials)+"</span>":"")
     +"</div><div style='font-size:10.5px;color:#222;font-weight:600;margin-top:4px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory"
     +(e.approvedBy?"<span style='font-weight:400;color:#555;'> &nbsp;("+esc(e.approvedBy)+")</span>":"")
-    +"</div></div>"
+    +"</div>"
+    +"<div class='no-print' style='font-size:10px;color:#999;margin-top:3px;'>[diag] approvedBy=\""+esc(e.approvedBy||"")+"\" initials=\""+esc(e.approverInitials||"")+"\"</div>"
+    +"</div>"
 
     +"</div>"
 
