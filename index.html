@@ -143,6 +143,8 @@ function prefixR(s){const v=(s===null||s===undefined)?"":String(s).trim();if(!v)
 function suffixPct(s){const raw=(s===null||s===undefined)?"":String(s).trim();if(raw==="")return"";const v=raw.replace(/\s*%\s*$/,"").trim();return v+" %";}
 // Normalise period: strip any trailing "month/months/mon" (case-insensitive) and append " Months"
 function normalisePeriod(s){const raw=(s===null||s===undefined)?"":String(s).trim();if(raw==="")return"";const v=raw.replace(/\s*(months?|mon)\s*$/i,"").trim();return v+" Months";}
+// Compute initials from a full name. "Francois Malherbe" -> "FM", "Mary Ann Smith" -> "MS", "" -> ""
+function initials(s){const raw=(s===null||s===undefined)?"":String(s).trim();if(!raw)return"";const parts=raw.split(/\s+/).filter(function(p){return p.length>0;});if(parts.length===0)return"";if(parts.length===1)return parts[0][0].toUpperCase();return(parts[0][0]+parts[parts.length-1][0]).toUpperCase();}
 function sStyle(l){
   const v=(l||"").toLowerCase();
   if(v.includes("declined"))return"background:#fdecea;color:#c0392b";
@@ -183,7 +185,7 @@ async function fetchMonthItems(token,monthVal){
     "email_mm2fr2bd","long_text_mm31n1e","long_text_mm31hyds","dropdown_mm315mbh",
     "long_text_mm323dd9","long_text_mm3258wv","long_text_mm3263ks",
     "text_mm32mv5t","text_mm32kxq8",
-    "numeric_mm312190","recourse8","payout"
+    "numeric_mm312190","recourse8","payout","approved_by"
   ];
   const colArg='[\"'+colIds.join('\",\"')+'\"]';
 
@@ -261,6 +263,7 @@ function parseItems(items){
     // or where Application Specialist set status to "Generate Letter" (108).
     // These are all active queues where the proposed approval letter may need to be generated/edited.
     if(statusIdx===0||statusIdx===11||statusIdx===13||statusIdx===108){
+      const approver=getText(cols["approved_by"]);
       approved.push(Object.assign({},base,{
         settlement:getText(cols["long_text_mm31n1e"]),
         equipmentSchedule:getText(cols["long_text_mm31hyds"]),
@@ -272,7 +275,9 @@ function parseItems(items){
         docFee:getNum(cols["numeric_mm312190"]),
         rentalInclIns:getText(cols["text_mm32kxq8"]),
         recourse:getNum(cols["recourse8"]),
-        approvalConditions:getText(cols["dropdown_mm315mbh"])
+        approvalConditions:getText(cols["dropdown_mm315mbh"]),
+        approvedBy:approver,
+        approverInitials:initials(approver)
       }));
     }
   });
@@ -617,14 +622,22 @@ function generateApprovalPDF(deal, edit) {
   doc.text("2. This approval may at any time be withdrawn or amended without notice, at our discretion", margin, y); y += 4;
   doc.text("3. Invoice value has to be calculated on the rental exclusive of insurance", margin, y); y += 8;
 
-  // Signature - empty box for wet signature, text below
+  // Signature - box with auto-filled initials if approver set, text below
   doc.setFillColor(221,238,244);
   doc.rect(margin, y, 85, 12, "F");
+  if(edit.approverInitials){
+    doc.setFont("times","italic");
+    doc.setFontSize(20);
+    doc.setTextColor(34,34,34);
+    doc.text(edit.approverInitials, margin+42.5, y+8.5, {align:"center"});
+  }
   y += 16;
   doc.setFont("helvetica","bold");
   doc.setFontSize(8.5);
   doc.setTextColor(34,34,34);
-  doc.text("Custom Capital Finance (Pty) Ltd Authorised Signatory", margin, y);
+  let sigCaption="Custom Capital Finance (Pty) Ltd Authorised Signatory";
+  if(edit.approvedBy){sigCaption+="  ("+edit.approvedBy+")";}
+  doc.text(sigCaption, margin, y);
   y += 8;
 
   // Footer (mint divider only - CCF details already in header)
@@ -747,7 +760,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.8</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.9</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -1023,7 +1036,11 @@ function renderLetterApproval(){
     +"</div>"
 
     // Signature
-    +"<div style='margin-top:8px;margin-bottom:10px;'><div style='background:#ddeef4;display:inline-block;padding:0;height:38px;width:220px;border-radius:2px;'></div><div style='font-size:10.5px;color:#222;font-weight:600;margin-top:4px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory</div></div>"
+    +"<div style='margin-top:8px;margin-bottom:10px;'><div style='background:#ddeef4;display:inline-block;padding:0;height:38px;width:220px;border-radius:2px;text-align:center;line-height:38px;'>"
+    +(e.approverInitials?"<span style=\"font-family:'Dancing Script',cursive;font-size:26px;color:#222;font-weight:700;\">"+esc(e.approverInitials)+"</span>":"")
+    +"</div><div style='font-size:10.5px;color:#222;font-weight:600;margin-top:4px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory"
+    +(e.approvedBy?"<span style='font-weight:400;color:#555;'> &nbsp;("+esc(e.approvedBy)+")</span>":"")
+    +"</div></div>"
 
     +"</div>"
 
@@ -1063,6 +1080,8 @@ function buildAppEdit(d){
     docFee: d.docFee || "",
     cond1: cond1,
     cond2: "",
+    approvedBy: d.approvedBy || "",
+    approverInitials: d.approverInitials || "",
     checks: APPROVAL_CHECKS.map(function(){return true;})
   };
 }
