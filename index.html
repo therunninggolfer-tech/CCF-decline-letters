@@ -747,7 +747,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.7</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.8</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -1168,10 +1168,42 @@ function bind(){
     bindField("ap-payout","payout");
     bindField("ap-settlement","settlement");
     bindField("ap-escalation","escalation");
+    // Visual % suffix on blur for Escalation field
+    (function(){
+      const el=document.getElementById("ap-escalation");
+      if(el)el.addEventListener("blur",function(ev){
+        const v=ev.target.value.replace(/\s*%\s*$/,"").trim();
+        if(v!==""){ev.target.value=v+" %";S.appEdit.escalation=v+" %";}
+      });
+    })();
     bindField("ap-rental","rental");
+    // Visual R prefix on blur for Rental field
+    (function(){
+      const el=document.getElementById("ap-rental");
+      if(el)el.addEventListener("blur",function(ev){
+        const v=ev.target.value.trim();
+        if(v!==""&&!/^r\s/i.test(v)){ev.target.value="R "+v;S.appEdit.rental="R "+v;}
+      });
+    })();
     bindField("ap-factor","factor");
     bindField("ap-period","period");
+    // Visual "Months" normalisation on blur for Period field
+    (function(){
+      const el=document.getElementById("ap-period");
+      if(el)el.addEventListener("blur",function(ev){
+        const v=ev.target.value.replace(/\s*(months?|mon)\s*$/i,"").trim();
+        if(v!==""){ev.target.value=v+" Months";S.appEdit.period=v+" Months";}
+      });
+    })();
     bindField("ap-rentalincl","rentalInclIns");
+    // Visual R prefix on blur for Insurance + Rental field
+    (function(){
+      const el=document.getElementById("ap-rentalincl");
+      if(el)el.addEventListener("blur",function(ev){
+        const v=ev.target.value.trim();
+        if(v!==""&&!/^r\s/i.test(v)){ev.target.value="R "+v;S.appEdit.rentalInclIns="R "+v;}
+      });
+    })();
     bindField("ap-docfee","docFee");
     bindField("ap-cond1","cond1");
     bindField("ap-cond2","cond2");
@@ -1203,4 +1235,3 @@ if(S.token){load();}else{render();}
 </script>
 </body>
 </html>
-
