@@ -683,9 +683,7 @@ function generateApprovalPDF(deal, edit) {
   doc.setFont("helvetica","bold");
   doc.setFontSize(8.5);
   doc.setTextColor(34,34,34);
-  let sigCaption="Custom Capital Finance (Pty) Ltd Authorised Signatory";
-  if(edit.approvedBy){sigCaption+="  ("+edit.approvedBy+")";}
-  doc.text(sigCaption, margin, y);
+  doc.text("Custom Capital Finance (Pty) Ltd Authorised Signatory", margin, y);
   y += 8;
 
   // Footer (mint divider only - CCF details already in header)
@@ -808,7 +806,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.15</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.16</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -1088,9 +1086,7 @@ function renderLetterApproval(){
     +"<div style='background:#ddeef4;display:inline-block;padding:8px 24px;border-radius:2px;min-height:24px;min-width:140px;text-align:center;'>"
     +(e.approverInitials?"<span style=\"font-family:'Dancing Script',cursive;font-size:28px;color:#222;font-weight:700;line-height:1;\">"+esc(e.approverInitials)+"</span>":"&nbsp;")
     +"</div>"
-    +"<div style='font-size:10.5px;color:#222;font-weight:600;margin-top:4px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory"
-    +(e.approvedBy?" <span style='font-weight:400;color:#555;'>("+esc(e.approvedBy)+")</span>":"")
-    +"</div>"
+    +"<div style='font-size:10.5px;color:#222;font-weight:600;margin-top:4px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory</div>"
     +"</div>"
 
     +"</div>"
