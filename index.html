@@ -312,6 +312,7 @@ function parseItems(items){
     // These are all active queues where the proposed approval letter may need to be generated/edited.
     if(statusIdx===0||statusIdx===11||statusIdx===13||statusIdx===108){
       const approver=getPersonName(cols["approved_by"]);
+      const rawCol=cols["approved_by"];
       approved.push(Object.assign({},base,{
         settlement:getText(cols["long_text_mm31n1e"]),
         equipmentSchedule:getText(cols["long_text_mm31hyds"]),
@@ -325,7 +326,9 @@ function parseItems(items){
         recourse:getNum(cols["recourse8"]),
         approvalConditions:getText(cols["dropdown_mm315mbh"]),
         approvedBy:approver,
-        approverInitials:initials(approver)
+        approverInitials:initials(approver),
+        rawApprovedByText:rawCol?(rawCol.text||""):"NO_COL",
+        rawApprovedByValue:rawCol?(rawCol.value||""):"NO_COL"
       }));
     }
   });
@@ -808,7 +811,7 @@ function downloadAnyPDF(){
 function hdr(letter){
   const tabs=letter?"":"<div style='display:flex;border-left:1px solid rgba(255,255,255,.2);margin-left:8px;padding-left:8px;'><button class='tab-btn "+(S.tab==="decline"?"active":"")+"' id='tab-decline'>Declined</button><button class='tab-btn "+(S.tab==="defer"?"active":"")+"' id='tab-defer'>Deferred</button><button class='tab-btn "+(S.tab==="approve"?"active":"")+"' id='tab-approve'>Approval</button></div>";
   const btns=letter?"<button class='btn btn-ghost' id='btn-back'>← Back</button><button class='btn btn-gold' id='btn-print'>🖨 Print</button><button class='btn btn-green' id='btn-download'>⇩ Download PDF</button>":"<button class='btn btn-ghost' id='btn-refresh'>↻ Refresh</button><button class='btn btn-ghost' id='btn-settings' style='font-size:15px;padding:6px 12px;'>⚙</button>";
-  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.12</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
+  return "<div class='no-print' style='background:linear-gradient(130deg,#366775 0%,#224f5e 100%);padding:0 28px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.18);min-height:64px;'><img src='"+LOGO_SRC+"' alt='CCF' style='height:32px;width:auto;object-fit:contain;filter:brightness(10);flex-shrink:0;'/><div style='flex:1;padding:16px 0;'><div style='color:white;font-size:16px;font-weight:600;'>CCF Letter Generator</div><div style='color:rgba(255,255,255,.55);font-size:11px;margin-top:1px;'>Decline · Defer · Approval — Applications 2026 · v3.13</div></div>"+tabs+"<div style='display:flex;gap:8px;margin-left:auto;'>"+btns+"</div></div>";
 }
 
 // ── Setup screen ──────────────────────────────────────────────────────────────
@@ -1091,6 +1094,7 @@ function renderLetterApproval(){
     +"<div style='font-size:10.5px;color:#222;font-weight:600;margin-top:4px;'>Custom Capital Finance (Pty) Ltd Authorised Signatory"
     +(e.approvedBy?" <span style='font-weight:400;color:#555;'>("+esc(e.approvedBy)+")</span>":"")
     +"</div>"
+    +"<div class='no-print' style='font-size:10px;color:#999;margin-top:6px;padding:6px;background:#f5f5f5;border-radius:2px;font-family:monospace;word-break:break-all;'>DIAG | approvedBy=&quot;"+esc(e.approvedBy||"")+"&quot; initials=&quot;"+esc(e.approverInitials||"")+"&quot;<br/>rawText=&quot;"+esc(e.rawApprovedByText||"")+"&quot;<br/>rawValue=&quot;"+esc(e.rawApprovedByValue||"")+"&quot;</div>"
     +"</div>"
 
     +"</div>"
@@ -1133,6 +1137,8 @@ function buildAppEdit(d){
     cond2: "",
     approvedBy: d.approvedBy || "",
     approverInitials: d.approverInitials || "",
+    rawApprovedByText: d.rawApprovedByText || "",
+    rawApprovedByValue: d.rawApprovedByValue || "",
     checks: APPROVAL_CHECKS.map(function(){return true;})
   };
 }
